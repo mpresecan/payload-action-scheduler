@@ -1,226 +1,152 @@
-# Payload Plugin Template
+# Payload Action Scheduler (in development)
+Add scheduled tasks to your Payload app effortlessly. Whether you need to postpone a task to a specific future time, set up periodic tasks, or offload tasks to run in the background, Payload Action Scheduler has you covered. With this plugin, you can monitor your task queues, see execution results, and track execution timestamps seamlessly.
 
-A template repo to create a [Payload CMS](https://payloadcms.com) plugin.
+![scheduled-actions-view.png](readme/scheduled-actions-view.png)
 
-Payload is built with a robust infrastructure intended to support Plugins with ease. This provides a simple, modular, and reusable way for developers to extend the core capabilities of Payload.
+### Note
+The execution of the action scheduler depends on invoking the /api/scheduled-actions/run API. This can be achieved in two ways:
 
-To build your own Payload plugin, all you need is:
+* **Serverless Environment**: Use an external scheduler (e.g., AWS CloudWatch, Google Cloud Scheduler) to call `/api/scheduled-actions/run` at regular intervals.
+* **Node-Server Environment**: Set up a custom cron script (e.g., using node-cron) to regularly call `/api/scheduled-actions/run`.
 
-* An understanding of the basic Payload concepts
-* And some JavaScript/Typescript experience
+## Features
+* **Schedule Future Tasks**: Postpone tasks to execute at a specified future time.
+* **Periodic Tasks**: Set up tasks to run at regular intervals.
+* **Background Processing**: Offload tasks to run asynchronously in the background.
+* **Task Monitoring**: Monitor your task queues, execution results, and timestamps.
 
-## Background
+## 1. How to Register a Task
+You can register tasks either by writing your action inside an API endpoint or by including it in the actions array within the plugin configuration.
 
-Here is a short recap on how to integrate plugins with Payload, to learn more visit the [plugin overview page](https://payloadcms.com/docs/plugins/overview).
+### Registering via API Endpoint
+Define your action within an API endpoint. Here's an example of how to create an endpoint for clearing up posts:
 
-### How to install a plugin
+```typescript
+// app/api/cleanup-posts/route.ts
+import { ActionSchedulerRoute } from '@/payload-action-scheduler';
 
-To install any plugin, simply add it to your payload.config() in the Plugin array.
+export const POST = ActionSchedulerRoute(async (request, args) => {
+    // args is an object containing the query parameters passed by scheduled action
+    const collection = args['collection'];
+    // payload instance is available in request
+    const { payload } = request;
 
-```ts
-import samplePlugin from 'sample-plugin';
+    // ... logic to clear up posts, payload instance is available
+    // await payload.find(collection).deleteMany();
 
-export const config = buildConfig({
-  plugins: [
-    // You can pass options to the plugin
-    samplePlugin({
-		  enabled: true,
-    }),
-  ]
+    return Response.json({ message: 'Post Cleared' }, { status: 200 });
+});
+```
+### Registering within Plugin Configuration
+Alternatively, you can register your actions directly within the plugin configuration. Here's an example:
+
+```typescript
+// payload.config.ts
+plugins: [
+  //... other plugins
+  actionScheduler({
+    // ... other configurations
+    actions: [
+      {
+        endpoint: 'cleanup-posts',
+        async handler(payload, args) {
+            // ... logic to clear up posts
+        }
+      }
+    ]
+    // ... other configurations
+  })
+]
+```
+
+## 2. How to Schedule a Task
+
+### Add Task via Payload Admin
+![create-action.png](readme/create-action.png)
+1. **Required**: Add the endpoint by API URL if the action is defined in an API endpoint, or write the name of the action previously defined in the `pluginConfig.actions` array.
+2. **Optional**: Define arguments in JSON format.
+3. **Optional**: Group - the group tag by which actions can be grouped in view.
+4. **Optional**: Priority - higher priority will be served sooner in the queue. Default 0
+5. **Optional**: Cron expression - for recurring events, define the cron expression. **
+6. **Optional**: Scheduled date - when the action will be executed, or when the recurring event starts executing. If a cron expression is defined but the scheduled date is not, the scheduled date will be defined in the earliest cycle defined by the cron expression. **
+
+**Notes**:
+** If both the cron expression and scheduled date are left empty, the action will be scheduled as async and will execute only once, as soon as possible (in the next queue cycle).
+
+### Add Task Programmatically
+You can also add tasks programmatically using the addAction function, following the same principles. Here's an example:
+
+```typescript
+import { addAction } from 'payload-action-scheduler';
+
+await addAction({
+  endpoint: 'test', // required, everything else optional
+  cronExpression: '*/1 * * * *',
+  args: {
+    name: 'Joe Doe',
+    age: 22,
+  },
+  scheduledAt: new Date(),
+  group: 'test-group',
+  priority: 1,
 });
 ```
 
-### Initialization
+## 3. How does Action Scheduler work?
+When the scheduled actions are properly set and scheduled, the action scheduler will be invoked at regular intervals by a custom cron-job script or an external service via a GET request to `/api/scheduled-actions/run`. It is important to set up this recurring invocation because, without it, the scheduler will not function.
 
-The initialization process goes in the following order:
+When an action is added, the scheduler calculates the next closest scheduledAt timestamp. When `/api/scheduled-actions/run` is invoked, the action scheduler checks the database for scheduled actions with a status of pending and a scheduledAt timestamp that has passed the current datetime. It then sorts these actions based on priority and asynchronously executes all queued actions in parallel.
 
-1. Incoming config is validated
-2. **Plugins execute**
-3. Default options are integrated
-4. Sanitization cleans and validates data
-5. Final config gets initialized
+Each action logs its creation time, execution start time, execution result, and execution duration. These logs can be viewed in the Scheduled Actions Dashboard. If an action execution results in an error, you can hook into the error function to perform additional logging or send notifications about the failed action execution, as shown below:
 
-## Building the Plugin
-
-When you build a plugin, you are purely building a feature for your project and then abstracting it outside of the project.
-
-### Template Files
-
-In the [payload-plugin-template](https://github.com/payloadcms/payload-plugin-template), you will see a common file structure that is used across all plugins:
-
-1. root folder
-2. /src folder
-3. /dev folder
-
-#### Root
-
-In the root folder, you will see various files that relate to the configuration of the plugin. We set up our environment in a similar manner in Payload core and across other projects, so hopefully these will look familiar:
-
-* **README**.md* - This contains instructions on how to use the template. When you are ready, update this to contain instructions on how to use your Plugin.
-* **package**.json* - Contains necessary scripts and dependencies. Overwrite the metadata in this file to describe your Plugin.
-* .**editorconfig** - Defines settings to maintain consistent coding styles.
-* .**eslintrc**.js - Eslint configuration for reporting on problematic patterns.
-* .**gitignore** - List specific untracked files to omit from Git.
-* .**prettierrc**.js - Configuration for Prettier code formatting.
-* **LICENSE** - As part of the open-source community, we ship all plugins with an MIT license but it is not required.
-* **tsconfig**.json - Configures the compiler options for TypeScript
-
-**IMPORTANT***: You will need to modify these files.
-
-#### Dev
-
-In the dev folder, you’ll find a basic payload project, created with `npx create-payload-app` and the blank template.
-
-The `samplePlugin` has already been installed to the `payload.config()` file in this project.
-
-```ts
+```typescript
+// payload.config.ts
 plugins: [
-  samplePlugin({
-    enabled: false,
+  //... other plugins
+  actionScheduler({
+    // ... other configurations
+    errorHooks: [
+      async ({payload, action, message, code}) => {
+        // your method
+      }
+    ]
+    // ... other configurations
   })
 ]
 ```
 
-Later when you rename the plugin or add additional options, make sure to update them here.
+After the action has finished executing, the scheduler updates the status of the action to either completed or failed, depending on the result of the execution, and if the action is a recurring event, it will reschedule the action based on the cron expression.
 
-You may wish to add collections or expand the test project depending on the purpose of your plugin. Just make sure to keep this dev environment as simplified as possible - users should be able to install your plugin without additional configuration required.
+## 4. Known Gotchas
+### Function Timeout in Serverless Runtime
+In serverless environments, function execution time is capped by a timeout limit which varies depending on the hosting plan. For example, the default Hobby plan on Vercel has a timeout of 10 seconds. It's crucial to be aware of the timeout settings specific to your plan because this affects how long your functions can run before being forcibly terminated.
 
-When you’re ready to start development, navigate into this folder with `cd dev`
+The Action Scheduler incorporates a mechanism to prevent a scheduled action from running too close to this limit. It is configured to attempt action execution up to the server action timeout minus one second. If this duration is exceeded, the action will be marked with the status "timed out."
 
-And then start the project with `yarn dev` and pull up [http://localhost:3000/](http://localhost:3000/) in your browser.
+Handling Timeouts
+* **Timeout Configuration**: Ensure that the function timeout is set truthfully to the actual lambda function timeout. This setup helps in handling cases where the action execution might slightly exceed the expected duration.
+* **Action Status and Rescheduling**: If an action exceeds its configured timeout, it will not be processed further in that cycle and will not be rescheduled if it is a recurring action. However, it will be marked with a "running" status and will be picked up in the next queue cycle for re-execution. This is important to be aware of, because this behavior can lead to multiplying action execution, which might not be desirable in some cases.
 
-#### Src
+This setup helps ensure that even if an action times out due to an unusually long execution time, it will have another chance to complete in the next cycle without permanently failing or getting lost.
 
-Now that we have our environment setup and we have a dev project ready to - it’s time to build the plugin!
+## 5. Endpoint Defined Actions vs. Config Defined Actions
+### Endpoint Defined Actions
+#### Pros:
 
-**index.ts**
+* **Scalability**: In serverless runtimes, endpoint defined actions can scale infinitely. This is particularly beneficial if there are many actions to be executed in the queue.
 
-First up, the `src/index.ts` file. It is best practice not to build the plugin directly in this file, instead we use this to export the plugin and types from separate files.
+#### Cons:
 
-**Plugin.ts**
+* **Loading Overhead**: Can introduce additional loading overhead due to the need to handle HTTP requests for each action.
+* **Security Risks**: If not implemented correctly using `ActionSchedulerRoute`, there is a risk of security vulnerabilities. Non-action scheduler invokers might be able to call the endpoint functionality. The `ActionSchedulerRoute` ensures that the communication signature is correct and present. If the signature is missing or incorrect, the call will be rejected.
 
-To reiterate, the essence of a payload plugin is simply to extend the payload config - and that is exactly what we are doing in this file.
+### Config Defined Actions
+#### Pros:
 
-```ts
-export const samplePlugin =
-  (pluginOptions: PluginTypes) =>
-    (incomingConfig: Config): Config => {
-      let config = { ...incomingConfig }
+* **Minimal Overhead**: These actions have a very minimal overhead since they are defined directly within the plugin configuration.
+* **Simplicity**: Easier to manage and configure within the plugin setup.
 
-      // do something cool with the config here
+#### Cons:
 
-      return config
-    }
+* **Limited Scalability**: Does not scale as effectively in serverless runtimes compared to endpoint defined actions. This limitation is due to the lack of dynamic resource allocation that endpoints can leverage.
 
-```
-
-First, we receive the existing payload config along with any plugin options.
-
-Then we set the variable `config` to be equal to the existing config.
-
-From here, you can extend the config as you wish.
-
-Finally, you return the config and that is it!
-
-##### Spread Syntax
-
-Spread syntax (or the spread operator) is a feature in JavaScript that uses the dot notation **(...)** to spread elements from arrays, strings, or objects into various contexts.
-
-We are going to use spread syntax to allow us to add data to existing arrays without losing the existing data. It is crucial to spread the existing data correctly – else this can cause adverse behavior and conflicts with Payload config and other plugins.
-
-Let’s say you want to build a plugin that adds a new collection:
-
-```ts
-config.collections = [
-  ...(config.collections || []),
-  // Add additional collections here
-]
-```
-
-First we spread the `config.collections` to ensure that we don’t lose the existing collections, then you can add any additional collections just as you would in a regular payload config.
-
-This same logic is applied to other properties like admin, hooks, globals:
-
-```ts
-config.globals = [
-  ...(config.globals || []),
-  // Add additional globals here
-]
-
-config.hooks = {
-  ...(incomingConfig.hooks || {}),
-  // Add additional hooks here
-}
-```
-
-Some properties will be slightly different to extend, for instance the onInit property:
-
-```ts
-import { onInitExtension } from './onInitExtension' // example file
-
-config.onInit = async payload => {
-  if (incomingConfig.onInit) await incomingConfig.onInit(payload)
-  // Add additional onInit code by defining an onInitExtension function
-  onInitExtension(pluginOptions, payload)
-}
-```
-
-If you wish to add to the onInit, you must include the async/await. We don’t use spread syntax in this case, instead you must await the existing onInit before running additional functionality.
-
-In the template, we have stubbed out a basic `onInitExtension` file that you can use, if not needed feel free to delete it.
-
-##### File Aliasing
-
-If your plugin uses packages or dependencies that are not browser compatible (fs, stripe, nodemailer, etc), you will need to alias them using your bundler to prevent getting errors in build.
-
-You can read more about aliasing files with Webpack or Vite in the [excluding server modules](https://payloadcms.com/docs/admin/excluding-server-code#aliasing-server-only-modules) docs.
-
-##### Types.ts
-
-If your plugin has options, you should define and provide types for these options in a separate file which gets exported from the main index.ts.
-
-```ts
-export interface PluginTypes {
-  /**
-   * Enable or disable plugin
-   * @default false
-   */
-  enabled?: boolean
-}
-```
-
-If possible, include JSDoc comments to describe the options and their types. This allows a developer to see details about the options in their editor.
-
-##### Testing
-
-Having a test suite for your plugin is essential to ensure quality and stability. Jest is a popular testing framework, widely used for testing JavaScript and particularly for applications built with React.
-
-Jest organizes tests into test suites and cases. We recommend creating individual tests based on the expected behavior of your plugin from start to finish.
-
-Writing tests with Jest is very straightforward and you can learn more about how it works in the [Jest documentation.](https://jestjs.io/)
-
-For this template, we stubbed out `plugin.spec.ts` in the `dev` folder where you can write your tests.
-
-```ts
-describe('Plugin tests', () => {
-  // Create tests to ensure expected behavior from the plugin
-  it('some condition that must be met', () => {
-   // Write your test logic here
-   expect(...)
-  })
-})
-```
-
-## Best practices
-
-With this tutorial and the `payload-plugin-template`, you should have everything you need to start building your own plugin.
-In addition to the setup, here are other best practices aim we follow:
-
-* **Providing an enable / disable option:** For a better user experience, provide a way to disable the plugin without uninstalling it. This is especially important if your plugin adds additional webpack aliases, this will allow you to still let the webpack run to prevent errors.
-* **Include tests in your GitHub CI workflow**: If you’ve configured tests for your package, integrate them into your workflow to run the tests each time you commit to the plugin repository. Learn more about [how to configure tests into your GitHub CI workflow.](https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs)
-* **Publish your finished plugin to NPM**: The best way to share and allow others to use your plugin once it is complete is to publish an NPM package. This process is straightforward and well documented, find out more [creating and publishing a NPM package here.](https://docs.npmjs.com/creating-and-publishing-scoped-public-packages/).
-* **Add payload-plugin topic tag**: Apply the tag **payload-plugin **to your GitHub repository. This will boost the visibility of your plugin and ensure it gets listed with [existing payload plugins](https://github.com/topics/payload-plugin).
-* **Use [Semantic Versioning](https://semver.org/) (SemVar)** - With the SemVar system you release version numbers that reflect the nature of changes (major, minor, patch). Ensure all major versions reference their Payload compatibility.
-
-# Questions
-Please contact [Payload](mailto:dev@payloadcms.com) with any questions about using this plugin template.

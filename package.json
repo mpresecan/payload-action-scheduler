@@ -13,7 +13,9 @@
     "plugin",
     "typescript",
     "react",
-    "template"
+    "template",
+    "action-scheduler",
+    "task-manager"
   ],
   "scripts": {
     "dev": "cd dev && cross-env NODE_OPTIONS=--no-deprecation next dev",
@@ -35,11 +37,12 @@
   "devDependencies": {
     "@payloadcms/db-mongodb": "3.0.0-beta.10",
     "@payloadcms/eslint-config": "^1",
-    "@payloadcms/next": "3.0.0-beta.10",
+    "@payloadcms/next": "3.0.0-beta.29",
     "@payloadcms/richtext-lexical": "3.0.0-beta.10",
     "@payloadcms/ui": "3.0.0-beta.10",
     "@swc/jest": "^0.2.36",
     "@types/jest": "^29.5.11",
+    "@types/qs": "^6.9.15",
     "@types/react": "^18.2.78",
     "@typescript-eslint/eslint-plugin": "5.12.1",
     "@typescript-eslint/parser": "5.12.1",
@@ -54,8 +57,12 @@
     "next": "^14.3.0-canary",
     "payload": "3.0.0-beta.10",
     "prettier": "^2.7.1",
-    "react": "^18.0.0",
+    "react": "^18.2.0",
     "sharp": "^0.33.3",
     "typescript": "^5.4.2"
+  },
+  "dependencies": {
+    "cron-parser": "^4.9.0",
+    "qs": "^6.12.1"
   }
 }

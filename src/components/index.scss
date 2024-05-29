@@ -1,0 +1,68 @@
+.icon-button .btn__label {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.items-center {
+  display: flex;
+  align-items: center;
+}
+
+.gap {
+  gap: 0.8rem;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.icon-button.spin .lucide {
+  animation: spin 2s linear infinite;
+}
+
+.text-muted {
+  color: var(--toastify-text-color-light);
+}
+
+.text-dark {
+  color: var(--csstools-color-scheme--dark);
+}
+
+.action-endpoint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.button-effect {
+  transition: background-color 0.3s;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.button-effect:hover {
+  background-color: var(--color-base-700);
+}
+
+#scheduled-actions-list .cell-_select, #scheduled-actions-list #heading-_select {
+  //display: none;
+}
