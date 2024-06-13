@@ -5,7 +5,6 @@ import Examples from './collections/Examples'
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import { actionScheduler } from '../../src'
-import sharp from 'sharp'
 
 export default buildConfig({
   secret: process.env.PAYLOAD_SECRET || '',
@@ -29,8 +28,10 @@ export default buildConfig({
       }
     ]
   })],
+  graphQL: {
+    disable: true,
+  },
   db: mongooseAdapter({
     url: process.env.DATABASE_URI || '',
   }),
-  sharp,
 })

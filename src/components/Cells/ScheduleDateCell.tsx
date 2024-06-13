@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { useTableCell } from '@payloadcms/ui/elements/Table/TableCellProvider'
-import {stringifyDiff} from "../../helpers/time";
+import {stringifyDiff} from "../../helpers/time-client";
 
 const ScheduleDateCell = () => {
   const { cellData, rowData } = useTableCell()

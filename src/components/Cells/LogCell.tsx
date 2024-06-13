@@ -3,7 +3,7 @@
 import React from 'react'
 import { useTableCell } from '@payloadcms/ui/elements/Table/TableCellProvider'
 import { ScheduledAction } from '../../types'
-import { stringifyDiff } from '../../helpers/time'
+import { stringifyDiff } from '../../helpers/time-client'
 
 const LogCell = () => {
   const cellContext = useTableCell()

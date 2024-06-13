@@ -101,3 +101,32 @@ export class TimeoutError extends Error {
     this.name = 'TimeoutError'
   }
 }
+
+export interface ScheduledAction {
+  id: string;
+  endpoint: string;
+  status?: ('pending' | 'completed' | 'failed' | 'running' | 'cancelled' | 'timeout') | null;
+  args?:
+    | {
+    [k: string]: unknown;
+  }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  group?: string | null;
+  priority?: number | null;
+  cronExpression?: string | null;
+  scheduledDateTime?: string | null;
+  log?:
+    | {
+    date: string;
+    code?: number | null;
+    message: string;
+    id?: string | null;
+  }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
