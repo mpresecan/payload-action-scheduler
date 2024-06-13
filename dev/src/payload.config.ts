@@ -20,13 +20,37 @@ export default buildConfig({
     enabled: true,
     actions: [
       {
+        endpoint: 'test',
+        async handler(payload, args) {
+          console.log('Running test action', args, typeof args)
+          return 'some message in return';
+        }
+      },
+      {
+        endpoint: 'test2',
+        handler: async (payload, args) => {
+          console.log('Running test2 action', args, typeof args)
+        }
+      },
+      {
         endpoint: 'long-running-action',
         handler: async (payload, args) => {
           console.log('Running long-waiting-action action', args, typeof args)
           await new Promise(resolve => setTimeout(resolve, 25000));
         }
       }
-    ]
+    ],
+    errorHooks: [
+      async ({ payload, action, message, code }) => {
+        console.error('ERROR LOG 1:', { action, message, code })
+      },
+      async ({ payload, action, message, code }) => {
+        console.error('ERROR LOG 2:', { action, message, code })
+      }
+    ],
+    debug: true,
+    timeoutSeconds: 10,
+    runtime: 'serverless',
   })],
   graphQL: {
     disable: true,

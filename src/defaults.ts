@@ -12,4 +12,5 @@ export const pluginDefaults : PluginTypes = {
   errorHooks: [],
   enabled: true,
   apiURL: '/api',
+  collectionGroup: 'Collections'
 }

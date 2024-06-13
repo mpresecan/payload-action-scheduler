@@ -51,11 +51,17 @@ export interface PluginTypes {
    * @default '/api'
    */
   apiURL?: string,
+
+  /**
+   * Collection group admin dashboard for the scheduled actions
+   * @default 'Collections'
+   */
+  collectionGroup?: string,
 }
 
 export interface ErrorLogFunctionArgs{
   payload: Payload,
-  action: GeneratedTypes["collections"]["scheduled-actions"],
+  action: ScheduledAction,
   message: string,
   code?: number,
 }
@@ -75,10 +81,11 @@ export type AddActionType = {
   scheduledAt?: Date,
   cronExpression?: string,
   priority?: number,
+  payload: Payload
 }
 
-export type GetActionType = AddActionType & {
-  status?: GeneratedTypes["collections"]["scheduled-actions"]['status'],
+export type GetActionType = Omit<AddActionType, 'payload'> & {
+  status?: ScheduledAction['status'],
 }
 
 export type ActionDefinition = {
@@ -88,7 +95,7 @@ export type ActionDefinition = {
 
 export interface RunActionArgs {
   payload: BasePayload<GeneratedTypes>;
-  action: GeneratedTypes["collections"]["scheduled-actions"];
+  action: ScheduledAction;
   timeoutSeconds: number;
   actionHandlers: ActionDefinition[];
   errorHooks: ((args: ErrorLogFunctionArgs) => Promise<void>)[];

@@ -3,12 +3,11 @@ import {
   AddActionType,
   GetActionType,
   ErrorLogFunctionArgs,
-  RunActionArgs, TimeoutError
+  RunActionArgs, TimeoutError, ScheduledAction
 } from "../types";
 import {parseExpression} from "cron-parser";
 import {SCHEDULED_ACTIONS_COLLECTION_SLUG} from "../collections/ScheduledActions";
 import {normalizeJSONString, sortObjectKeys} from "../helpers";
-import {PaginatedDocs} from "payload/database";
 import {stringifyDiff} from "../helpers/time-server";
 import {generateSignature} from "./security";
 
@@ -28,7 +27,7 @@ export const addAction = async (props: AddActionType) => {
     log,
   } = action
 
-  const payload = await getPayload({config: configPromise})
+  const {payload} = props;
 
   const isScheduled = await isActionScheduled(payload, endpoint, scheduledDateTime, 'pending')
   if (isScheduled)
@@ -106,7 +105,7 @@ export const constructNewAction = (props: AddActionType) => {
 }
 
 
-export const isActionScheduled = async (payload: BasePayload<GeneratedTypes>, endpoint: string, scheduledAt?: Date | string, status?: GeneratedTypes["collections"]["scheduled-actions"]['status']) => {
+export const isActionScheduled = async (payload: BasePayload<GeneratedTypes>, endpoint: string, scheduledAt?: Date | string, status?: ScheduledAction['status']) => {
 
   if (typeof scheduledAt === 'string') {
     scheduledAt = new Date(scheduledAt)
@@ -206,7 +205,7 @@ export const processActionsQueue = async ({
                                             errorHooks,
                                             apiURL
                                           }: Omit<RunActionArgs, 'action'> & {
-  actions: GeneratedTypes["collections"]["scheduled-actions"][]
+  actions: ScheduledAction[]
 }) => {
   if (actions.length === 0) {
     return 0
@@ -240,7 +239,7 @@ export const processActionsQueue = async ({
   }
 }
 
-export const updateActionsToRunningStatus = async (payload: BasePayload<GeneratedTypes>, actions: GeneratedTypes["collections"]["scheduled-actions"][]) => {
+export const updateActionsToRunningStatus = async (payload: BasePayload<GeneratedTypes>, actions: ScheduledAction[]) => {
   await payload.update({
     collection: SCHEDULED_ACTIONS_COLLECTION_SLUG,
     where: {
@@ -268,13 +267,11 @@ export const runAction = async ({
 
   // first determine the action
   let actionPromise: Promise<Response>
-  // @ts-ignore
   if (action.endpoint.startsWith('@')) {
 
     let registeredAction = actionHandlers.find(a => a.endpoint === action.endpoint)
-    // @ts-ignore
+
     if (!registeredAction && action.endpoint.startsWith('@')) {
-      // @ts-ignore
       registeredAction = actionHandlers.find(a => a.endpoint === action.endpoint.slice(1))
     }
 
@@ -290,11 +287,9 @@ export const runAction = async ({
       return Promise.reject(new Error(`Action ${action.endpoint} is not a function`))
     }
 
-    // @ts-ignore
     actionPromise = registeredAction.handler(payload, action.args)
 
   } else {
-    // @ts-ignore
     const endPoint: string = action.endpoint.startsWith('http') ? action.endpoint : `${apiURL}${action.endpoint}`
 
     actionPromise = fetch(endPoint, {
@@ -327,7 +322,7 @@ export const runAction = async ({
       throw error
     })
 
-  let status: GeneratedTypes["collections"]["scheduled-actions"]['status'] = 'failed'
+  let status: ScheduledAction['status'] = 'failed'
   let message: string = 'Unknown error'
   let code: number = 500
 
@@ -371,7 +366,7 @@ export const runAction = async ({
   }
 }
 
-const logStartAction = (action: GeneratedTypes["collections"]["scheduled-actions"]) => {
+const logStartAction = (action: ScheduledAction) => {
   // @ts-ignore
   action.log?.push({
     date: new Date().toISOString(),
@@ -382,8 +377,8 @@ const logStartAction = (action: GeneratedTypes["collections"]["scheduled-actions
 const actionCleanup = async (
   payload: BasePayload<GeneratedTypes>,
   errorHooks: ((args: ErrorLogFunctionArgs) => Promise<void>)[],
-  action: GeneratedTypes["collections"]["scheduled-actions"],
-  status: GeneratedTypes["collections"]["scheduled-actions"]['status'],
+  action: ScheduledAction,
+  status: ScheduledAction['status'],
   message: string,
   code?: number,
 ) => {
@@ -402,8 +397,8 @@ const actionCleanup = async (
 
 export const logAction = async (
   payload: BasePayload<GeneratedTypes>,
-  action: GeneratedTypes["collections"]["scheduled-actions"],
-  status: GeneratedTypes["collections"]["scheduled-actions"]["status"],
+  action: ScheduledAction,
+  status: ScheduledAction["status"],
   message: string,
   code?: number,
   calculateTimeDiff = false
@@ -454,7 +449,7 @@ export const logAction = async (
 const executeErrorLog = async (
   payload: BasePayload<GeneratedTypes>,
   errorHooks: ((args: ErrorLogFunctionArgs) => Promise<void>)[],
-  action: GeneratedTypes["collections"]["scheduled-actions"],
+  action: ScheduledAction,
   message: string,
   code?: number
 ) => {
@@ -470,7 +465,7 @@ const executeErrorLog = async (
 }
 
 
-const rescheduleAction = async (payload: BasePayload<GeneratedTypes>, action: GeneratedTypes["collections"]["scheduled-actions"]) => {
+const rescheduleAction = async (payload: BasePayload<GeneratedTypes>, action: ScheduledAction) => {
 
   if (!action.cronExpression) {
     throw new Error('Cannot reschedule an action without a cron expression')

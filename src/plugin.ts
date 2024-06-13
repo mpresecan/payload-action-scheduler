@@ -21,7 +21,7 @@ export const actionScheduler =
     config.collections = [
       ...(config.collections || []),
       // Add additional collections here
-      ScheduledActions(config),
+      ScheduledActions(pluginOptions),
     ]
 
     config.globals = [

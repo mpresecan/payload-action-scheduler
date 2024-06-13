@@ -9,7 +9,7 @@ import {
   RecurringCell,
 } from '../components/Cells'
 import {parseExpression} from 'cron-parser'
-import {AddActionType, PluginTypes} from "../types";
+import {AddActionType, PluginTypes, ScheduledAction} from "../types";
 import {MAX_NODE_TIMEOUT_SECONDS, pluginDefaults} from "../defaults";
 import {sortObjectKeys} from "../helpers";
 import {
@@ -22,7 +22,7 @@ import {
 import {stringifyDiff} from "../helpers/time-server";
 import {GeneratedTypes} from "payload";
 
-export const SCHEDULED_ACTIONS_COLLECTION_SLUG = 'scheduled-actions' // do not put in config to change the collection slug
+export const SCHEDULED_ACTIONS_COLLECTION_SLUG = 'scheduled-actions' as const // do not put in config to change the collection slug
 export const SCHEDULED_ACTIONS_ENDPOINT = '/run'
 
 // export const RECURRING_INTERVAL_SECONDS = 60 // not needed
@@ -40,6 +40,7 @@ export const ScheduledActions = (pluginConfig: PluginTypes) : CollectionConfig =
     timeoutSeconds: timeoutSecondsConst,
     errorHooks,
     apiURL,
+    collectionGroup,
   } = {
     ...pluginDefaults,
     ...pluginConfig
@@ -59,7 +60,7 @@ export const ScheduledActions = (pluginConfig: PluginTypes) : CollectionConfig =
     slug: SCHEDULED_ACTIONS_COLLECTION_SLUG,
     access: {
       create: createAccess,
-      delete: () => false,
+      delete: () => true,
       update: () => false,
       read: readAccess,
     },
@@ -76,6 +77,7 @@ export const ScheduledActions = (pluginConfig: PluginTypes) : CollectionConfig =
       components: {
         BeforeListTable: [BeforeScheduledActionsList],
       },
+      group: collectionGroup
     },
     disableDuplicate: true,
     hooks: {
@@ -107,7 +109,6 @@ export const ScheduledActions = (pluginConfig: PluginTypes) : CollectionConfig =
         method: 'get',
         async handler(request) {
           const {payload} = request
-
           const startTime = new Date()
           let duration: number
           let totalDocs = 0
@@ -130,7 +131,7 @@ export const ScheduledActions = (pluginConfig: PluginTypes) : CollectionConfig =
 
             successCount = await processActionsQueue({
               payload: payload,
-              actions: results.docs as GeneratedTypes["collections"]["scheduled-actions"][],
+              actions: results.docs as ScheduledAction[],
               actionHandlers: actions!,
               timeoutSeconds: timeoutSeconds,
               errorHooks: errorHooks!,

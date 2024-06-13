@@ -1,4 +1,4 @@
-# Payload Action Scheduler (in development)
+# Payload Action Scheduler (in alpha)
 Add scheduled tasks to your Payload app effortlessly. Whether you need to postpone a task to a specific future time, set up periodic tasks, or offload tasks to run in the background, Payload Action Scheduler has you covered. With this plugin, you can monitor your task queues, see execution results, and track execution timestamps seamlessly.
 
 ![scheduled-actions-view.png](readme/scheduled-actions-view.png)
